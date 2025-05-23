@@ -11,6 +11,9 @@ from fastapi.security import APIKeyHeader
 from pydantic import BaseModel, Field
 import uvicorn
 from loguru import logger
+from fastapi.responses import JSONResponse
+from fastapi import status
+import time
 
 from .agent import ToolAgent
 from .model import LLMModel
@@ -38,6 +41,45 @@ class ApiKeyResponse(BaseModel):
     key_id: str
     key_value: str
     key_name: str
+
+
+# OpenAI-compatible schemas
+from pydantic import BaseModel, Field
+from typing import List, Optional, Dict, Any
+
+class OpenAIMessage(BaseModel):
+    role: str
+    content: str
+    name: Optional[str] = None
+
+class OpenAIChatRequest(BaseModel):
+    model: str
+    messages: List[OpenAIMessage]
+    tools: Optional[List[Dict[str, Any]]] = None
+    tool_choice: Optional[Any] = None
+    max_tokens: Optional[int] = None
+    temperature: Optional[float] = None
+    stream: Optional[bool] = False
+    user: Optional[str] = None
+    # ... add more OpenAI params as needed
+
+class OpenAIToolCall(BaseModel):
+    id: str
+    type: str = "function"
+    function: Dict[str, Any]
+
+class OpenAIChatResponseChoice(BaseModel):
+    index: int
+    message: Dict[str, Any]
+    finish_reason: Optional[str] = None
+    tool_calls: Optional[List[OpenAIToolCall]] = None
+
+class OpenAIChatResponse(BaseModel):
+    id: str
+    object: str
+    created: int
+    model: str
+    choices: List[OpenAIChatResponseChoice]
 
 
 # Dictionary to cache models
@@ -386,6 +428,93 @@ async def root():
             {"path": "/api-keys", "method": "POST", "description": "Create a new API key"},
             {"path": "/api-keys", "method": "GET", "description": "List all API keys"},
             {"path": "/api-keys/{key_id}", "method": "DELETE", "description": "Delete an API key"}
+        ]
+    }
+
+
+@app.post("/v1/chat/completions", dependencies=[Depends(verify_api_key)])
+async def openai_chat_completions(request: OpenAIChatRequest):
+    """
+    OpenAI-compatible chat completions endpoint with tool use support (tool_call).
+    """
+    # Map OpenAI messages to agent query and conversation history
+    conversation = []
+    user_query = None
+    for msg in request.messages:
+        if msg.role == "user":
+            user_query = msg.content
+        elif msg.role == "assistant":
+            conversation.append({"assistant": msg.content})
+        elif msg.role == "system":
+            pass
+        elif msg.role == "tool":
+            # Optionally handle tool messages
+            pass
+    if not user_query:
+        return JSONResponse(status_code=status.HTTP_400_BAD_REQUEST, content={"error": {"message": "No user message found"}})
+
+    # Use requested model or default
+    model_name = request.model if request.model else os.environ.get("MODEL_PATH")
+    model = get_model(model_name)
+    agent = ToolAgent(model=model)
+    for tool_def in app.state.default_agent.tool_definitions:
+        tool_name = tool_def["name"]
+        agent.register_tool(
+            name=tool_name,
+            func=app.state.default_agent.tools[tool_name],
+            description=tool_def["description"],
+            parameters=tool_def["parameters"],
+            output_description=tool_def["output"]
+        )
+    # Run the agent
+    result = agent.run(query=user_query, conversation_history=conversation)
+
+    # If tool use is requested, return tool_calls in OpenAI format
+    tool_calls = []
+    if result.get("actions"):
+        for i, action in enumerate(result["actions"]):
+            if action.get("tool") and action.get("input") is not None:
+                tool_calls.append(OpenAIToolCall(
+                    id=f"call_{i}",
+                    function={
+                        "name": action["tool"],
+                        "arguments": action["input"]
+                    }
+                ))
+
+    response = OpenAIChatResponse(
+        id="chatcmpl-" + str(uuid.uuid4()),
+        object="chat.completion",
+        created=int(time.time()),
+        model=model_name,
+        choices=[
+            OpenAIChatResponseChoice(
+                index=0,
+                message={
+                    "role": "assistant",
+                    "content": result.get("final_answer", "")
+                },
+                finish_reason="stop",
+                tool_calls=tool_calls if tool_calls else None
+            )
+        ]
+    )
+    return response
+
+
+@app.get("/v1/models", dependencies=[Depends(verify_api_key)])
+async def openai_list_models():
+    """
+    OpenAI-compatible models endpoint.
+    """
+    models = list(model_cache.keys())
+    if not models:
+        # If no models loaded yet, show default
+        models = [os.environ.get("MODEL_PATH", "mistralai/Mistral-7B-Instruct-v0.2")]
+    return {
+        "object": "list",
+        "data": [
+            {"id": m, "object": "model", "created": 0, "owned_by": "user"} for m in models
         ]
     }
 
