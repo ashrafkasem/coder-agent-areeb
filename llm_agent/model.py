@@ -32,10 +32,19 @@ class LLMModel:
         self.max_new_tokens = int(os.environ.get("MAX_NEW_TOKENS", max_new_tokens))
         self.temperature = temperature
         
+        # Get HuggingFace token from environment if available
+        hf_token = os.environ.get("HUGGINGFACE_TOKEN")
         logger.info(f"Loading model {self.model_id} on {self.device}")
-        self.tokenizer = AutoTokenizer.from_pretrained(self.model_id)
+        
+        # Pass token to tokenizer and model loaders if available
+        self.tokenizer = AutoTokenizer.from_pretrained(
+            self.model_id,
+            token=hf_token
+        )
+        
         self.model = AutoModelForCausalLM.from_pretrained(
             self.model_id,
+            token=hf_token,
             torch_dtype=torch.bfloat16 if torch.cuda.is_available() else torch.float32,
             device_map="auto"
         )

@@ -10,6 +10,17 @@ export PORT="${PORT:-8000}"
 export MODEL_PATH="${MODEL_PATH:-mistralai/Mistral-7B-Instruct-v0.2}"
 export MAX_NEW_TOKENS="${MAX_NEW_TOKENS:-1024}"
 
+# Check for Hugging Face token if using a gated model
+if [[ "$MODEL_PATH" == *"mistralai"* || "$MODEL_PATH" == *"meta-llama"* ]]; then
+    if [ -z "$HUGGINGFACE_TOKEN" ]; then
+        echo "Warning: $MODEL_PATH likely requires authentication."
+        echo "If you encounter permission errors, set the HUGGINGFACE_TOKEN environment variable."
+        echo "Get a token at: https://huggingface.co/settings/tokens"
+    else
+        echo "Using Hugging Face token for model authentication"
+    fi
+fi
+
 # Check if an API key is provided or generate one
 if [ -z "$INITIAL_API_KEY" ]; then
     # Generate a secure random API key if none provided

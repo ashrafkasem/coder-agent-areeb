@@ -62,33 +62,42 @@ MODEL_PATH=mistralai/Mixtral-8x7B-Instruct-v0.1 ./run.sh
 
 ### Option 3: Docker (Recommended)
 
-For containerized deployment with modern Docker Compose (V2+):
+For containerized deployment, use the provided Docker script:
 
 ```bash
-# Build and run with default model
-# (Requires Docker Compose V2: use 'docker compose', not 'docker-compose')
-docker compose build
-# Or with a specific model:
-docker compose build --build-arg DEFAULT_MODEL_PATH=codellama/CodeLlama-7b-Instruct-hf
+# Set your Hugging Face token (required for gated models like Mistral)
+export HUGGINGFACE_TOKEN=your_token_here
 
-docker compose up
+# Run with default model
+./run_docker.sh
+
+# Or specify a different model
+MODEL_PATH=microsoft/phi-2 ./run_docker.sh
 ```
 
-Or, using the Makefile (if you have Docker Compose V2):
+This script will:
+1. Build the Docker image if needed
+2. Run the container with GPU support
+3. Mount the data directory and HuggingFace cache
+4. Pass your Hugging Face token for authentication
+
+> **Note**: For models that require authentication (like Mistral), you need a valid Hugging Face token with proper permissions. Get one at [huggingface.co/settings/tokens](https://huggingface.co/settings/tokens).
+
+If you prefer manual Docker commands:
 
 ```bash
-make build-docker
-make run-docker
+# Build the image
+docker build -t llm-agent .
+
+# Run the container
+docker run --gpus all \
+  -e HUGGINGFACE_TOKEN=your_token_here \
+  -e MODEL_PATH=mistralai/Mistral-7B-Instruct-v0.2 \
+  -p 8000:8000 \
+  -v $(pwd)/data:/app/data \
+  -v huggingface-cache:/root/.cache/huggingface \
+  llm-agent
 ```
-
-**Note:** If you see errors about `docker-compose` not found or Python errors, upgrade to Docker Compose V2:
-
-```bash
-sudo apt remove docker-compose
-sudo apt install docker-compose-plugin
-```
-
-Then use `docker compose` (with a space) for all commands.
 
 ## Client Options
 
@@ -211,3 +220,19 @@ print(result["final_answer"])
 ```
 
 The client will automatically use the API key from `.api_key` if present, or from the `LLM_AGENT_API_KEY` environment variable.
+
+## Hugging Face Authentication
+
+Many modern LLMs (like Mistral) require authentication to download. To use these models:
+
+1. Create a Hugging Face account at [huggingface.co](https://huggingface.co)
+2. Generate a token at [huggingface.co/settings/tokens](https://huggingface.co/settings/tokens)
+3. Request access to the model (e.g., visit [mistralai/Mistral-7B-Instruct-v0.2](https://huggingface.co/mistralai/Mistral-7B-Instruct-v0.2) and click "Access repository")
+4. Set the `HUGGINGFACE_TOKEN` environment variable:
+   ```bash
+   export HUGGINGFACE_TOKEN=your_token_here
+   ```
+
+The system will automatically use this token when loading models.
+
+For open-access models like Microsoft's Phi-2, authentication is not required.
