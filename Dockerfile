@@ -18,6 +18,23 @@ RUN ln -sf /usr/bin/python3 /usr/bin/python && \
 COPY requirements.txt /app/
 RUN pip install --no-cache-dir -r requirements.txt
 
+# Create .cache directory for Hugging Face
+RUN mkdir -p /root/.cache/huggingface
+
+# Set up Hugging Face credentials
+RUN echo 'function setup_hf_token() {\n\
+    if [ -n "$HUGGINGFACE_TOKEN" ]; then\n\
+        mkdir -p /root/.huggingface\n\
+        echo -n "$HUGGINGFACE_TOKEN" > /root/.huggingface/token\n\
+        echo "Hugging Face token configured"\n\
+    else\n\
+        echo "WARNING: HUGGINGFACE_TOKEN not set"\n\
+    fi\n\
+}\n\
+setup_hf_token\n\
+exec "$@"' > /entrypoint.sh && \
+    chmod +x /entrypoint.sh
+
 # Copy the rest of the code
 COPY . /app/
 
@@ -29,6 +46,9 @@ ENV MAX_NEW_TOKENS=1024
 
 # Expose port
 EXPOSE 8000
+
+# Set entrypoint to handle token setup
+ENTRYPOINT ["/bin/bash", "/entrypoint.sh"]
 
 # Run the server
 CMD ["python", "-m", "llm_agent"]

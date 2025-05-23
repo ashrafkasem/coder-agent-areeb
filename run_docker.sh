@@ -5,6 +5,7 @@ set -e
 HF_TOKEN=${HUGGINGFACE_TOKEN:-""}
 MODEL=${MODEL_PATH:-"mistralai/Mistral-7B-Instruct-v0.2"}
 PORT=${PORT:-8000}
+REBUILD=${REBUILD:-"false"}
 
 # Check for required Hugging Face token
 if [ -z "$HF_TOKEN" ]; then
@@ -20,9 +21,9 @@ if ! command -v docker &> /dev/null; then
     exit 1
 fi
 
-# Check if the image exists, build if needed
-if ! docker image inspect llm-agent &> /dev/null; then
-    echo "Docker image 'llm-agent' not found. Building it now..."
+# Build or rebuild the image
+if [ "$REBUILD" = "true" ] || ! docker image inspect llm-agent &> /dev/null; then
+    echo "Building Docker image 'llm-agent'..."
     docker build -t llm-agent .
 fi
 
