@@ -21,30 +21,14 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy the rest of the code
 COPY . /app/
 
-# Set build arguments with defaults
-ARG DEFAULT_MODEL_PATH=mistralai/Mistral-7B-Instruct-v0.2
-ARG DEFAULT_MAX_NEW_TOKENS=1024
-ARG DEFAULT_HOST=0.0.0.0
-ARG DEFAULT_PORT=8000
-
-# Set environment variables with build arg defaults
-ENV HOST=${DEFAULT_HOST}
-ENV PORT=${DEFAULT_PORT}
-ENV MODEL_PATH=${DEFAULT_MODEL_PATH}
-ENV MAX_NEW_TOKENS=${DEFAULT_MAX_NEW_TOKENS}
-
-# Add option to pre-download model
-ARG PREDOWNLOAD_MODEL=false
-RUN if [ "$PREDOWNLOAD_MODEL" = "true" ]; then \
-        python -c "from transformers import AutoTokenizer, AutoModelForCausalLM; \
-        model_id = '${MODEL_PATH}'; \
-        print(f'Pre-downloading model: {model_id}'); \
-        tokenizer = AutoTokenizer.from_pretrained(model_id); \
-        model = AutoModelForCausalLM.from_pretrained(model_id)"; \
-    fi
+# Set environment variables with defaults (can be overridden at runtime)
+ENV HOST=0.0.0.0
+ENV PORT=8000
+ENV MODEL_PATH=mistralai/Mistral-7B-Instruct-v0.2
+ENV MAX_NEW_TOKENS=1024
 
 # Expose port
-EXPOSE ${DEFAULT_PORT}
+EXPOSE 8000
 
 # Run the server
-CMD ["python", "-m", "llm_agent"] 
+CMD ["python", "-m", "llm_agent"]
