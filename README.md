@@ -60,18 +60,35 @@ For development or if you have a local GPU:
 MODEL_PATH=mistralai/Mixtral-8x7B-Instruct-v0.1 ./run.sh
 ```
 
-### Option 3: Docker
+### Option 3: Docker (Recommended)
 
-For containerized deployment:
+For containerized deployment with modern Docker Compose (V2+):
 
 ```bash
 # Build and run with default model
+# (Requires Docker Compose V2: use 'docker compose', not 'docker-compose')
+docker compose build
+# Or with a specific model:
+docker compose build --build-arg DEFAULT_MODEL_PATH=codellama/CodeLlama-7b-Instruct-hf
+
+docker compose up
+```
+
+Or, using the Makefile (if you have Docker Compose V2):
+
+```bash
 make build-docker
 make run-docker
-
-# Or with specific model
-make build-docker MODEL_PATH=codellama/CodeLlama-7b-Instruct-hf
 ```
+
+**Note:** If you see errors about `docker-compose` not found or Python errors, upgrade to Docker Compose V2:
+
+```bash
+sudo apt remove docker-compose
+sudo apt install docker-compose-plugin
+```
+
+Then use `docker compose` (with a space) for all commands.
 
 ## Client Options
 

@@ -5,6 +5,9 @@ MODEL_PATH ?= mistralai/Mistral-7B-Instruct-v0.2
 PORT ?= 8000
 MAX_NEW_TOKENS ?= 1024
 
+# Use Docker Compose V2 for all docker commands
+DOCKER_COMPOSE = docker compose
+
 .PHONY: help run run-docker build-docker clean
 
 help:
@@ -28,16 +31,16 @@ run:
 
 # Build Docker image
 build-docker:
-	docker-compose build \
+	$(DOCKER_COMPOSE) build \
 		--build-arg DEFAULT_MODEL_PATH=$(MODEL_PATH) \
 		--build-arg DEFAULT_MAX_NEW_TOKENS=$(MAX_NEW_TOKENS) \
 		--build-arg PREDOWNLOAD_MODEL=$(PREDOWNLOAD_MODEL)
 
 # Run Docker container
 run-docker:
-	MODEL_PATH=$(MODEL_PATH) PORT=$(PORT) MAX_NEW_TOKENS=$(MAX_NEW_TOKENS) docker-compose up
+	MODEL_PATH=$(MODEL_PATH) PORT=$(PORT) MAX_NEW_TOKENS=$(MAX_NEW_TOKENS) $(DOCKER_COMPOSE) up
 
 # Clean
 clean:
 	find . -type d -name __pycache__ -exec rm -r {} +
-	find . -type f -name "*.pyc" -delete 
+	find . -type f -name "*.pyc" -delete
