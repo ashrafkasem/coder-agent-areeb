@@ -496,7 +496,8 @@ async def openai_chat_completions(request: OpenAIChatRequest):
             )
         ]
     )
-    return response
+    logger.info(f"Returning OpenAI response: {response.model_dump_json()}")
+    return response.model_dump()  # For Pydantic v2; use response.dict() for v1
 
 
 @app.get("/v1/models", dependencies=[Depends(verify_api_key)])
