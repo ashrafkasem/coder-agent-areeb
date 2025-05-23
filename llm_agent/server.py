@@ -101,45 +101,24 @@ def setup_initial_api_key():
     return initial_key
 
 
-api_key_header = APIKeyHeader(name="X-API-Key")
-
-
-def get_model(model_name: Optional[str] = None):
+# --- API Key extraction helper ---
+def extract_api_key(request: Request) -> Optional[str]:
     """
-    Get or create a model instance.
-    
-    Args:
-        model_name: Optional model name or HF model ID
-        
-    Returns:
-        LLMModel instance
+    Extract API key from X-API-Key or Authorization: Bearer headers.
     """
-    # Use model_name or fall back to environment variable or default
-    model_id = model_name or os.environ.get("MODEL_PATH")
-    
-    # Use cache if model already loaded
-    if model_id in model_cache:
-        logger.info(f"Using cached model: {model_id}")
-        return model_cache[model_id]
-    
-    # Initialize new model
-    logger.info(f"Initializing new model: {model_id}")
-    model = LLMModel(model_id=model_id)
-    model_cache[model_id] = model
-    return model
+    api_key = request.headers.get("X-API-Key")
+    if not api_key:
+        auth_header = request.headers.get("Authorization")
+        if auth_header and auth_header.lower().startswith("bearer "):
+            api_key = auth_header[7:].strip()
+    return api_key
 
 
-def verify_api_key(api_key: str = Depends(api_key_header)):
-    """Verify the API key."""
-    if api_key not in api_keys:
-        raise HTTPException(status_code=401, detail="Invalid API key")
+def verify_api_key(request: Request):
+    api_key = extract_api_key(request)
+    if not api_key or api_key not in api_keys:
+        raise HTTPException(status_code=401, detail="Invalid or missing API key. Provide via 'X-API-Key' or 'Authorization: Bearer <key>' header.")
     return api_keys[api_key]
-
-
-def log_request(request: Request):
-    """Log request details."""
-    client_host = request.client.host if request.client else "unknown"
-    logger.info(f"Request from {client_host} to {request.url.path}")
 
 
 app = FastAPI(
@@ -151,9 +130,27 @@ app = FastAPI(
 
 @app.middleware("http")
 async def log_requests_middleware(request: Request, call_next):
-    """Middleware to log all requests."""
-    log_request(request)
+    """Middleware to log all requests and check API key."""
+    # Log request details
+    client_host = request.client.host if request.client else "unknown"
+    logger.info(f"Request from {client_host} to {request.url.path}")
+    # Allow docs endpoints without auth
+    if request.url.path in ["/docs", "/redoc"]:
+        return await call_next(request)
+    api_key = extract_api_key(request)
+    if not api_key:
+        logger.warning(f"Request to {request.url.path} rejected: Missing API key header")
+        return JSONResponse(
+            status_code=403,
+            content={
+                "error": {
+                    "message": "Authentication required. Add 'X-API-Key' or 'Authorization: Bearer <key>' header with a valid API key. See API_AUTH.md for details."
+                }
+            }
+        )
     response = await call_next(request)
+    if response.status_code == 403:
+        logger.warning(f"Request to {request.url.path} rejected: Invalid API key")
     return response
 
 
@@ -517,6 +514,26 @@ async def openai_list_models():
             {"id": m, "object": "model", "created": 0, "owned_by": "user"} for m in models
         ]
     }
+
+
+def get_model(model_name: Optional[str] = None):
+    """
+    Get or create a model instance.
+    Args:
+        model_name: Optional model name or HF model ID
+    Returns:
+        LLMModel instance
+    """
+    model_id = model_name or os.environ.get("MODEL_PATH")
+    if not model_id:
+        raise RuntimeError("No model name provided and MODEL_PATH is not set.")
+    if model_id in model_cache:
+        logger.info(f"Using cached model: {model_id}")
+        return model_cache[model_id]
+    logger.info(f"Initializing new model: {model_id}")
+    model = LLMModel(model_id=model_id)
+    model_cache[model_id] = model
+    return model
 
 
 def main():
