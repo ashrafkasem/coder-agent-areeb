@@ -1,0 +1,36 @@
+version: '3'
+
+services:
+  llm-agent:
+    build:
+      context: .
+      args:
+        # These build args can be overridden from command line:
+        # docker-compose build --build-arg DEFAULT_MODEL_PATH=your/model
+        DEFAULT_MODEL_PATH: ${DEFAULT_MODEL_PATH:-mistralai/Mistral-7B-Instruct-v0.2}
+        DEFAULT_MAX_NEW_TOKENS: ${DEFAULT_MAX_NEW_TOKENS:-1024}
+        PREDOWNLOAD_MODEL: ${PREDOWNLOAD_MODEL:-false}
+    image: llm-agent
+    ports:
+      - "${PORT:-8000}:${PORT:-8000}"
+    environment:
+      - HOST=${HOST:-0.0.0.0}
+      - PORT=${PORT:-8000}
+      # This environment variable can be changed without rebuilding:
+      - MODEL_PATH=${MODEL_PATH:-mistralai/Mistral-7B-Instruct-v0.2}
+      - MAX_NEW_TOKENS=${MAX_NEW_TOKENS:-1024}
+    volumes:
+      - ./data:/app/data
+      # Cache HuggingFace models between container restarts
+      - huggingface-cache:/root/.cache/huggingface
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+
+volumes:
+  huggingface-cache:
+    # Named volume for HuggingFace cache to speed up model loading 
