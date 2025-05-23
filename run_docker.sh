@@ -6,6 +6,7 @@ HF_TOKEN=${HUGGINGFACE_TOKEN:-""}
 MODEL=${MODEL_PATH:-"mistralai/Mistral-7B-Instruct-v0.2"}
 PORT=${PORT:-8000}
 REBUILD=${REBUILD:-"false"}
+USE_VLLM=${USE_VLLM:-"true"}
 
 # Check for required Hugging Face token
 if [ -z "$HF_TOKEN" ]; then
@@ -24,7 +25,15 @@ fi
 # Build or rebuild the image
 if [ "$REBUILD" = "true" ] || ! docker image inspect llm-agent &> /dev/null; then
     echo "Building Docker image 'llm-agent'..."
-    docker build -t llm-agent .
+    
+    # Build with or without vllm
+    if [ "$USE_VLLM" = "true" ]; then
+        echo "Building with vllm support"
+        docker build --build-arg USE_VLLM=true -t llm-agent .
+    else
+        echo "Building without vllm (simpler dependencies)"
+        docker build --build-arg USE_VLLM=false -t llm-agent .
+    fi
 fi
 
 echo "Starting LLM Agent Docker container with model: $MODEL"

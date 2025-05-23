@@ -15,8 +15,15 @@ RUN ln -sf /usr/bin/python3 /usr/bin/python && \
     ln -sf /usr/bin/pip3 /usr/bin/pip
 
 # Copy requirements first for better layer caching
-COPY requirements.txt /app/
-RUN pip install --no-cache-dir -r requirements.txt
+COPY requirements*.txt /app/
+
+# Set build arg for choosing requirements file
+ARG USE_VLLM=true
+RUN if [ "$USE_VLLM" = "true" ]; then \
+    pip install --no-cache-dir -r requirements.txt; \
+    else \
+    pip install --no-cache-dir -r requirements-simple.txt; \
+    fi
 
 # Create .cache directory for Hugging Face
 RUN mkdir -p /root/.cache/huggingface

@@ -35,6 +35,15 @@ Failed to load model 'mistralai/Mistral-7B-Instruct-v0.2': You are trying to acc
      llm-agent
    ```
 
+## Dependency Conflicts
+
+If you're experiencing dependency conflicts with vllm and transformers, try building without vllm:
+
+```bash
+# Build without vllm (simplified dependencies)
+REBUILD=true USE_VLLM=false HUGGINGFACE_TOKEN=your_token_here ./run_docker.sh
+```
+
 ## Using Open Models
 
 If you don't want to deal with authentication, use an open model instead:
@@ -55,5 +64,5 @@ If you still see errors:
 
 1. Make sure your token has access to the model you're trying to use
 2. Try using the REBUILD=true flag to force a complete rebuild of the image
-3. If you receive tokenization errors, try a different model
-4. Check your GPU memory - some models require significant VRAM 
+3. If you receive tokenization errors, try a different model or build without vllm (USE_VLLM=false)
+4. Check your GPU memory - some models require significant VRAM
