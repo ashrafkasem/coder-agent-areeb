@@ -5,7 +5,21 @@ Sample client for the Mistral Tool Agent API.
 import sys
 import json
 import requests
+import os
 from typing import Dict, Any, List, Optional
+
+
+def get_api_key() -> str:
+    """
+    Get API key from environment or .api_key file.
+    """
+    api_key = os.environ.get("LLM_AGENT_API_KEY")
+    if not api_key and os.path.exists(".api_key"):
+        with open(".api_key", "r") as f:
+            api_key = f.read().strip()
+    if not api_key:
+        raise RuntimeError("API key not found. Set LLM_AGENT_API_KEY or place it in .api_key file.")
+    return api_key
 
 
 def run_agent(
@@ -46,7 +60,7 @@ def run_agent(
     if examples:
         payload["examples"] = examples
     
-    response = requests.post(f"{api_url}/agent", json=payload)
+    response = requests.post(f"{api_url}/agent", json=payload, headers={"X-API-Key": get_api_key()})
     response.raise_for_status()
     
     return response.json()
@@ -62,7 +76,7 @@ def list_tools(api_url: str = "http://localhost:8000") -> Dict[str, Any]:
     Returns:
         List of available tools
     """
-    response = requests.get(f"{api_url}/tools")
+    response = requests.get(f"{api_url}/tools", headers={"X-API-Key": get_api_key()})
     response.raise_for_status()
     
     return response.json()
@@ -78,7 +92,7 @@ def list_models(api_url: str = "http://localhost:8000") -> Dict[str, Any]:
     Returns:
         List of loaded models
     """
-    response = requests.get(f"{api_url}/models")
+    response = requests.get(f"{api_url}/models", headers={"X-API-Key": get_api_key()})
     response.raise_for_status()
     
     return response.json()
@@ -153,4 +167,4 @@ def main():
 
 
 if __name__ == "__main__":
-    main() 
+    main()

@@ -166,4 +166,31 @@ The system has been tested with the following models:
 - codellama/CodeLlama-7b-Instruct-hf
 - microsoft/phi-2
 
-You can use any model that is compatible with the HuggingFace Transformers library and follows instruction-tuned formatting. 
+You can use any model that is compatible with the HuggingFace Transformers library and follows instruction-tuned formatting.
+
+## API Key Usage
+
+- The server will generate and print an API key on first run. This key is also saved to a `.api_key` file in the server directory.
+- All client requests (including from Cursor, Continue, or the provided Python client) **must** include the API key in the `X-API-Key` header. The example clients now support loading the key from the `.api_key` file or the `LLM_AGENT_API_KEY` environment variable.
+- If you copy the `.api_key` file to your local machine, you can use the provided example client or `llm_agent_client.py` without manually setting the environment variable.
+
+## Quickstart for Remote Use
+
+1. **Deploy the server on your remote machine:**
+
+```bash
+./deploy_agent_server.sh
+```
+
+2. **Copy the `.api_key` file to your local machine.**
+
+3. **Use the Python client in your IDE or script:**
+
+```python
+from llm_agent_client import LLMAgentClient
+client = LLMAgentClient(base_url="http://your-server-ip:8000")
+result = client.run_agent("What is the square root of 16?")
+print(result["final_answer"])
+```
+
+The client will automatically use the API key from `.api_key` if present, or from the `LLM_AGENT_API_KEY` environment variable.

@@ -36,6 +36,16 @@ from typing import Dict, List, Any, Optional, Union
 class LLMAgentClient:
     """Client for interacting with a remote LLM Tool Agent server."""
     
+    @staticmethod
+    def load_api_key_from_file(path: str = ".api_key") -> Optional[str]:
+        """
+        Load API key from a file if present.
+        """
+        if os.path.exists(path):
+            with open(path, "r") as f:
+                return f.read().strip()
+        return None
+    
     def __init__(
         self,
         base_url: Optional[str] = None,
@@ -54,7 +64,9 @@ class LLMAgentClient:
         self.api_key = api_key or os.environ.get("LLM_AGENT_API_KEY")
         
         if not self.api_key:
-            raise ValueError("API key is required. Provide it directly or via LLM_AGENT_API_KEY environment variable.")
+            self.api_key = self.load_api_key_from_file()
+        if not self.api_key:
+            raise ValueError("API key is required. Provide it directly, via LLM_AGENT_API_KEY, or in a .api_key file.")
         
         # Remove trailing slash if present
         if self.base_url.endswith("/"):
@@ -268,4 +280,4 @@ if __name__ == "__main__":
         
     except Exception as e:
         print(f"Error: {e}")
-        sys.exit(1) 
+        sys.exit(1)

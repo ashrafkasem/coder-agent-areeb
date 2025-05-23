@@ -125,7 +125,11 @@ async def startup_event():
     # Initialize the default model
     default_model_id = os.environ.get("MODEL_PATH")
     logger.info(f"Initializing default model: {default_model_id}")
-    model = get_model(default_model_id)
+    try:
+        model = get_model(default_model_id)
+    except Exception as e:
+        logger.error(f"Failed to load model '{default_model_id}': {e}")
+        raise RuntimeError(f"Failed to load model '{default_model_id}': {e}")
     
     # Initialize the agent with the default model
     logger.info("Initializing agent...")
@@ -396,4 +400,4 @@ def main():
 
 
 if __name__ == "__main__":
-    main() 
+    main()

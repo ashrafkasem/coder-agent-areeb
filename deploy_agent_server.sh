@@ -1,4 +1,5 @@
 #!/bin/bash
+set -e
 
 # Deploy script for LLM Tool Agent Server
 # This script helps set up and run the server on a remote machine
@@ -30,11 +31,11 @@ fi
 # Create python virtual environment if needed
 if [ ! -d "venv" ]; then
     echo "Creating virtual environment..."
-    python3 -m venv venv
+    python3 -m venv venv || { echo "ERROR: Failed to create venv. You may need to install python3-venv (e.g. sudo apt install python3-venv)"; exit 1; }
 fi
 
-# Activate virtual environment
-source venv/bin/activate
+# Activate virtual environment (use . for POSIX portability)
+. venv/bin/activate
 
 # Install dependencies
 echo "Installing dependencies..."
@@ -55,4 +56,4 @@ echo "To stop the server, press Ctrl+C"
 python -m llm_agent.server
 
 # Deactivate virtual environment on exit
-deactivate 
+deactivate

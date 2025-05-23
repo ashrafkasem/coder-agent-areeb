@@ -16,13 +16,21 @@ services:
     environment:
       - HOST=${HOST:-0.0.0.0}
       - PORT=${PORT:-8000}
-      # This environment variable can be changed without rebuilding:
       - MODEL_PATH=${MODEL_PATH:-mistralai/Mistral-7B-Instruct-v0.2}
       - MAX_NEW_TOKENS=${MAX_NEW_TOKENS:-1024}
+      # Optionally set a fixed API key for reproducibility (uncomment and set your value):
+      # - INITIAL_API_KEY=your-fixed-api-key-here
     volumes:
       - ./data:/app/data
       # Cache HuggingFace models between container restarts
       - huggingface-cache:/root/.cache/huggingface
+      # Optionally persist the .api_key file outside the container:
+      # - ./api_key_volume:/app/.api_key
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
     deploy:
       resources:
         reservations:
@@ -33,4 +41,4 @@ services:
 
 volumes:
   huggingface-cache:
-    # Named volume for HuggingFace cache to speed up model loading 
+    # Named volume for HuggingFace cache to speed up model loading
